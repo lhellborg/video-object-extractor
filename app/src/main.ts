@@ -3,12 +3,15 @@ import JSZip from "jszip";
 import { extractFrames, loadVideo, estimateFrameCount, VideoLoadError } from "./frames";
 import { detect, loadDetector } from "./detect";
 import { Tracker } from "./tracker";
+import { convertToMp4 } from "./convert";
 import {
   addThumbnail,
   getUI,
   resetThumbnails,
+  setConvertProgress,
   setProgress,
   setStatus,
+  showConvertButton,
   updateThumbnail,
   wireDropzone,
   wireSliders,
@@ -20,15 +23,18 @@ let selectedFile: File | null = null;
 let loadedVideo: HTMLVideoElement | null = null;
 let finalTracks: TrackedObject[] = [];
 let isRunning = false;
+let pendingConvertFile: File | null = null;
+let isConverting = false;
 
-wireSliders(ui);
-wireDropzone(ui, async (file) => {
+async function validateFile(file: File): Promise<void> {
   selectedFile = null;
+  pendingConvertFile = null;
   if (loadedVideo) {
     URL.revokeObjectURL(loadedVideo.src);
     loadedVideo = null;
   }
   ui.startBtn.disabled = true;
+  showConvertButton(ui, false);
   ui.filename.textContent = file.name;
   setStatus(ui, "Checking format…");
 
@@ -41,14 +47,51 @@ wireDropzone(ui, async (file) => {
       `Ready. ${loadedVideo.videoWidth}×${loadedVideo.videoHeight}, ${loadedVideo.duration.toFixed(1)}s — click Start.`,
     );
   } catch (e) {
-    if (e instanceof VideoLoadError) setStatus(ui, e.toUserMessage());
-    else setStatus(ui, `Error: ${e instanceof Error ? e.message : String(e)}`);
+    if (e instanceof VideoLoadError) {
+      setStatus(ui, e.toUserMessage());
+      pendingConvertFile = file;
+      showConvertButton(ui, true);
+    } else {
+      setStatus(ui, `Error: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
+}
+
+async function convert(file: File): Promise<void> {
+  isConverting = true;
+  setConvertProgress(ui, "Loading ffmpeg…");
+  try {
+    const converted = await convertToMp4(file, (p) => {
+      if (p.phase === "loading") {
+        setConvertProgress(ui, "Loading ffmpeg…");
+      } else {
+        setConvertProgress(ui, `Converting… ${Math.round(p.pct * 100)}%`);
+      }
+    });
+    showConvertButton(ui, false);
+    setStatus(ui, "Conversion complete. Re-checking format…");
+    await validateFile(converted);
+  } catch (e) {
+    setStatus(ui, `Conversion failed: ${e instanceof Error ? e.message : String(e)}`);
+    showConvertButton(ui, true);
+  } finally {
+    isConverting = false;
+  }
+}
+
+wireSliders(ui);
+wireDropzone(ui, (file) => {
+  void validateFile(file);
 });
 
 ui.startBtn.addEventListener("click", () => {
   if (!selectedFile || isRunning) return;
   void run(selectedFile);
+});
+
+ui.convertBtn.addEventListener("click", () => {
+  if (!pendingConvertFile || isConverting) return;
+  void convert(pendingConvertFile);
 });
 
 ui.downloadBtn.addEventListener("click", () => {

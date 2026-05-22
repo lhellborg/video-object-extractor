@@ -11,6 +11,7 @@ export interface UIElements {
   threshLabel: HTMLElement;
   startBtn: HTMLButtonElement;
   statusMsg: HTMLElement;
+  convertBtn: HTMLButtonElement;
   progressBar: HTMLElement;
   objCount: HTMLElement;
   downloadBtn: HTMLButtonElement;
@@ -31,6 +32,7 @@ export function getUI(): UIElements {
     threshLabel: $("thresh-label"),
     startBtn: $("start-btn") as HTMLButtonElement,
     statusMsg: $("status-msg"),
+    convertBtn: $("convert-btn") as HTMLButtonElement,
     progressBar: $("progress-bar"),
     objCount: $("obj-count"),
     downloadBtn: $("download-btn") as HTMLButtonElement,
@@ -78,6 +80,17 @@ export function wireDropzone(ui: UIElements, onFile: (file: File) => void): void
 
 export function setStatus(ui: UIElements, msg: string): void {
   ui.statusMsg.textContent = msg;
+}
+
+export function showConvertButton(ui: UIElements, show: boolean): void {
+  ui.convertBtn.hidden = !show;
+  ui.convertBtn.disabled = false;
+  ui.convertBtn.textContent = "Convert with ffmpeg (~30 MB download)";
+}
+
+export function setConvertProgress(ui: UIElements, label: string): void {
+  ui.convertBtn.disabled = true;
+  ui.convertBtn.textContent = label;
 }
 
 export function setProgress(ui: UIElements, pct: number): void {
