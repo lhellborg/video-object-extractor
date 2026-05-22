@@ -1,0 +1,21 @@
+# Local test videos — user-supplied videos are the point of this app
+*.3gp
+*.mp4
+*.mov
+*.webm
+*.avi
+*.mkv
+
+# Build output and deps (also handled in app/.gitignore but kept here for safety)
+node_modules/
+dist/
+dist-ssr/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.sw?
