@@ -1,6 +1,6 @@
 import "./style.css";
 import JSZip from "jszip";
-import { extractFrames, loadVideo, estimateFrameCount } from "./frames";
+import { extractFrames, loadVideo, estimateFrameCount, VideoLoadError } from "./frames";
 import { detect, loadDetector } from "./detect";
 import { Tracker } from "./tracker";
 import {
@@ -17,15 +17,33 @@ import type { TrackedObject } from "./types";
 
 const ui = getUI();
 let selectedFile: File | null = null;
+let loadedVideo: HTMLVideoElement | null = null;
 let finalTracks: TrackedObject[] = [];
 let isRunning = false;
 
 wireSliders(ui);
-wireDropzone(ui, (file) => {
-  selectedFile = file;
+wireDropzone(ui, async (file) => {
+  selectedFile = null;
+  if (loadedVideo) {
+    URL.revokeObjectURL(loadedVideo.src);
+    loadedVideo = null;
+  }
+  ui.startBtn.disabled = true;
   ui.filename.textContent = file.name;
-  ui.startBtn.disabled = false;
-  setStatus(ui, "Ready. Click Start to process.");
+  setStatus(ui, "Checking format…");
+
+  try {
+    loadedVideo = await loadVideo(file);
+    selectedFile = file;
+    ui.startBtn.disabled = false;
+    setStatus(
+      ui,
+      `Ready. ${loadedVideo.videoWidth}×${loadedVideo.videoHeight}, ${loadedVideo.duration.toFixed(1)}s — click Start.`,
+    );
+  } catch (e) {
+    if (e instanceof VideoLoadError) setStatus(ui, e.toUserMessage());
+    else setStatus(ui, `Error: ${e instanceof Error ? e.message : String(e)}`);
+  }
 });
 
 ui.startBtn.addEventListener("click", () => {
@@ -49,8 +67,8 @@ async function run(file: File): Promise<void> {
   try {
     await loadDetector((msg) => setStatus(ui, msg));
 
-    setStatus(ui, "Loading video…");
-    const video = await loadVideo(file);
+    const video = loadedVideo ?? (await loadVideo(file));
+    loadedVideo = video;
 
     const fps = Number(ui.fpsSlider.value);
     const threshold = Number(ui.threshSlider.value);

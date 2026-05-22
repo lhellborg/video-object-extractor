@@ -17,7 +17,12 @@
       </header>
 
       <section id="drop-zone" class="drop-zone">
-        <input type="file" id="file-input" accept="video/*" hidden />
+        <input
+          type="file"
+          id="file-input"
+          accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v"
+          hidden
+        />
         <p class="drop-hint">Drop a video here, or <button id="pick-btn" class="link">choose a file</button></p>
         <p class="filename" id="filename"></p>
       </section>
